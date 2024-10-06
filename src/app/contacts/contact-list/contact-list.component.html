@@ -1,5 +1,5 @@
 <div class="row">
-  <div class="col-md-8 col-md-offset-4">
+  <div class="col-md-10 col-md-offset-2">
     <div class="panel panel-default">
       <div class="panel-heading">
         <div class="row">
@@ -12,14 +12,7 @@
         </div>
       </div>
       <div class="panel-body">
-        <a href="#" class="list-group-item clearfix" *ngFor="let c of contacts">
-          <div class="pull-left">
-            <h3>{{ c.name }}</h3>
-          </div>
-          <div class="pull-right">
-            <img src="{{ c.imageUrl }}" alt="{{ c.name }}" class="img-responsive" style="max-height: 60px;">
-          </div>
-        </a>
+        <app-contact-item *ngFor="let contact of contacts" [contact]="contact" (click)="onSelected(contact)"></app-contact-item>
       </div>
     </div>
   </div>
