@@ -1,11 +1,10 @@
 import {
   Component,
   ElementRef,
-  EventEmitter,
-  Output,
   ViewChild,
 } from '@angular/core';
 import { Message } from '../message.model';
+import { MessageService } from '../message.service';
 
 @Component({
   selector: 'app-message-edit',
@@ -15,14 +14,15 @@ import { Message } from '../message.model';
 export class MessageEditComponent {
   @ViewChild('subject') subjectRef: ElementRef;
   @ViewChild('msgText') msgTextRef: ElementRef;
-  @Output() addMessageEvent = new EventEmitter<Message>();
-  currentSender = 'André Matheus';
+  currentSender = '19'; // The ID for my contact, which I added to MOCKCONTATCS.ts
+
+  constructor(private messageService: MessageService) {}
 
   onSendMessage() {
     const subject = this.subjectRef.nativeElement.value;
     const msgText = this.msgTextRef.nativeElement.value;
     const message = new Message('0001', subject, msgText, this.currentSender);
-    this.addMessageEvent.emit(message);
+    this.messageService.addMessage(message);
   }
 
   onClear() {
