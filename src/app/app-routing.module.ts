@@ -7,6 +7,7 @@ import { DocumentDetailComponent } from './documents/document-detail/document-de
 import { DocumentEditComponent } from './documents/document-edit/document-edit.component';
 import { ContactEditComponent } from './contacts/contact-edit/contact-edit.component';
 import { ContactDetailComponent } from './contacts/contact-detail/contact-detail.component';
+import { CanComponentDeactivateGuard } from './can-deactivate-guard.service';
 
 const appRoutes: Routes = [
   { path: '', redirectTo: '/documents', pathMatch: 'full' },
@@ -17,6 +18,7 @@ const appRoutes: Routes = [
       {
         path: 'new',
         component: DocumentEditComponent,
+        canDeactivate: [CanComponentDeactivateGuard],
       },
       {
         path: ':id',
@@ -25,6 +27,7 @@ const appRoutes: Routes = [
       {
         path: ':id/edit',
         component: DocumentEditComponent,
+        canDeactivate: [CanComponentDeactivateGuard],
       },
     ],
   },
@@ -36,6 +39,7 @@ const appRoutes: Routes = [
       {
         path: 'new',
         component: ContactEditComponent,
+        canDeactivate: [CanComponentDeactivateGuard],
       },
       {
         path: ':id',
@@ -44,6 +48,7 @@ const appRoutes: Routes = [
       {
         path: ':id/edit',
         component: ContactEditComponent,
+        canDeactivate: [CanComponentDeactivateGuard],
       },
     ],
   },
