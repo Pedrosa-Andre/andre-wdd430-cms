@@ -1,9 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Params, Router } from '@angular/router';
+import { NgForm } from '@angular/forms';
+
 import { Observable } from 'rxjs';
 import { Document } from '../document.model';
 import { DocumentService } from '../document.service';
-import { WindRefService } from '../../wind-ref.service';
 import { CanComponentDeactivate } from '../../can-deactivate-guard.service';
 
 @Component({
@@ -11,88 +12,64 @@ import { CanComponentDeactivate } from '../../can-deactivate-guard.service';
   templateUrl: './document-edit.component.html',
   styleUrl: './document-edit.component.css',
 })
-
 export class DocumentEditComponent implements OnInit, CanComponentDeactivate {
+  @ViewChild('f') form: NgForm;
+  originalDocument: Document;
   document: Document;
-  id: string;
-  nativeWindow: any;
+  editMode: boolean = false;
   changesSaved = false;
-  documentName: string;
-  documentDescription: string;
-  documentUrl: string;
-  isNew = false;
 
   constructor(
     private documentService: DocumentService,
     private route: ActivatedRoute,
-    private windRefService: WindRefService,
     private router: Router
   ) {}
 
   ngOnInit() {
-    this.nativeWindow = this.windRefService.getNativeWindow();
-
-    this.route.url.subscribe((urlSegments) => {
-      const path = urlSegments[0]?.path;
-      if (path === 'new') {
-        this.isNew = true;
+    this.route.params.subscribe((params: Params) => {
+      const id = params['id'];
+      if (!id) {
+        this.editMode = false;
         this.document = new Document('', '', '', '', []);
-        this.documentName = '';
-        this.documentDescription = '';
-        this.documentUrl = '';
-      } else {
-        this.route.params.subscribe((params: Params) => {
-          this.id = params['id'];
-          this.document = this.documentService.getDocument(this.id);
-          if (this.document) {
-            this.documentName = this.document.name;
-            this.documentDescription = this.document.description;
-            this.documentUrl = this.document.url;
-          }
-        });
+        return;
       }
+
+      this.originalDocument = this.documentService.getDocument(id);
+      if (!this.originalDocument) {
+        return;
+      }
+      this.editMode = true;
+      this.document = JSON.parse(JSON.stringify(this.originalDocument));
     });
+  }
+
+  onSubmit() {
+    const value = this.form.value;
+    const newDocument = new Document(
+      '',
+      value.name,
+      value.description,
+      value.url,
+      []
+    );
+    if (this.editMode) {
+      this.documentService.updateDocument(this.originalDocument, newDocument);
+    } else {
+      this.documentService.addDocument(newDocument);
+    }
+    this.changesSaved = true;
+    this.router.navigate(['../'], { relativeTo: this.route });
   }
 
   onCancel() {
     this.router.navigate(['../'], { relativeTo: this.route });
   }
 
-  onUpdateDocument() {
-    this.documentService.updateDocument(
-      this.document,
-      new Document(
-        '',
-        this.documentName,
-        this.documentDescription,
-        this.documentUrl,
-        []
-      )
-    );
-    this.changesSaved = true;
-    this.router.navigate(['../'], { relativeTo: this.route });
-  }
-
-  onCreateDocument() {
-    this.documentService.addDocument(
-      new Document(
-        '',
-        this.documentName,
-        this.documentDescription,
-        this.documentUrl,
-        []
-      )
-    );
-    this.documentName = '';
-    this.documentDescription = '';
-    this.documentUrl = '';
-  }
-
   canDeactivate(): Observable<boolean> | Promise<boolean> | boolean {
     if (
-      (this.documentName !== this.document.name ||
-        this.documentDescription !== this.document.description ||
-        this.documentUrl !== this.document.url) &&
+      (this.form.value.name !== this.document.name ||
+        this.form.value.description !== this.document.description ||
+        this.form.value.url !== this.document.url) &&
       !this.changesSaved
     ) {
       return confirm('Do you want to discard your changes?');

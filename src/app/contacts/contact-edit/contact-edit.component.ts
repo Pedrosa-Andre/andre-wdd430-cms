@@ -1,9 +1,11 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild, viewChild } from '@angular/core';
 import { ActivatedRoute, Params, Router } from '@angular/router';
+import { NgForm } from '@angular/forms';
+import { CdkDragDrop } from '@angular/cdk/drag-drop';
+
 import { Observable } from 'rxjs';
 import { Contact } from '../contact.model';
 import { ContactService } from '../contact.service';
-import { WindRefService } from '../../wind-ref.service';
 import { CanComponentDeactivate } from '../../can-deactivate-guard.service';
 
 @Component({
@@ -11,95 +13,105 @@ import { CanComponentDeactivate } from '../../can-deactivate-guard.service';
   templateUrl: './contact-edit.component.html',
   styleUrl: './contact-edit.component.css',
 })
-
 export class ContactEditComponent implements OnInit, CanComponentDeactivate {
+  @ViewChild('f') form: NgForm;
+  originalContact: Contact;
   contact: Contact;
-  id: string;
-  nativeWindow: any;
-  changesSaved = false;
-  contactName: string;
-  contactImageUrl: string;
-  contactEmail: string;
-  contactPhone: string;
-  isNew = false;
+  groupContacts: Contact[] = [];
+  editMode: boolean = false;
+  changesSaved: boolean = false;
 
   constructor(
     private contactService: ContactService,
     private route: ActivatedRoute,
-    private windRefService: WindRefService,
     private router: Router
   ) {}
 
   ngOnInit() {
-    this.nativeWindow = this.windRefService.getNativeWindow();
-
-    this.route.url.subscribe((urlSegments) => {
-      const path = urlSegments[0]?.path;
-      if (path === 'new') {
-        this.isNew = true;
+    this.route.params.subscribe((params: Params) => {
+      const id = params['id'];
+      if (!id) {
+        this.editMode = false;
         this.contact = new Contact('', '', '', '', '../../assets/images/default.png', []);
-        this.contactName = '';
-        this.contactEmail = '';
-        this.contactPhone = '';
-        this.contactImageUrl = '../../assets/images/default.png';
-      } else {
-        this.route.params.subscribe((params: Params) => {
-          this.id = params['id'];
-          this.contact = this.contactService.getContact(this.id);
-          if (this.contact) {
-            this.contactName = this.contact.name;
-            this.contactEmail = this.contact.email;
-            this.contactPhone = this.contact.phone;
-            this.contactImageUrl = this.contact.imageUrl;
-          }
-        });
+        return;
+      }
+
+      this.originalContact = this.contactService.getContact(id);
+      if (!this.originalContact) {
+        return;
+      }
+      this.editMode = true;
+      this.contact = JSON.parse(JSON.stringify(this.originalContact));
+
+      if (this.originalContact.group) {
+        this.groupContacts = this.originalContact.group.slice();
       }
     });
+  }
+
+  onSubmit() {
+    const value = this.form.value;
+    const newContact = new Contact(
+      '',
+      value.name,
+      value.email,
+      value.phone,
+      value.imageUrl,
+      this.groupContacts
+    );
+    if (this.editMode) {
+      this.contactService.updateContact(this.originalContact, newContact);
+    } else {
+      this.contactService.addContact(newContact);
+    }
+
+    this.changesSaved = true;
+    this.router.navigate(['../'], { relativeTo: this.route });
+  }
+
+  isInvalidContact(newContact: Contact) {
+    if (!newContact) {
+      return true;
+    }
+    if (this.contact && newContact.id === this.contact.id) {
+      return true;
+    }
+    for (let i = 0; i < this.groupContacts.length; i++) {
+      if (newContact.id === this.groupContacts[i].id) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  onDrop(contactDrop: CdkDragDrop<Contact>) {
+    const selectedContact: Contact = contactDrop.item.data;
+    const invalidGroupContact = this.isInvalidContact(selectedContact);
+    if (invalidGroupContact) {
+      return;
+    }
+    this.groupContacts.push(selectedContact);
+  }
+
+  onRemoveItem(index: number) {
+    if (index < 0 || index >= this.groupContacts.length) {
+      return;
+    }
+    this.groupContacts.splice(index, 1);
   }
 
   onCancel() {
     this.router.navigate(['../'], { relativeTo: this.route });
   }
 
-  onUpdateContact() {
-    this.contactService.updateContact(
-      this.contact,
-      new Contact(
-        '',
-        this.contactName,
-        this.contactEmail,
-        this.contactPhone,
-        this.contactImageUrl,
-        []
-      )
-    );
-    this.changesSaved = true;
-    this.router.navigate(['../'], { relativeTo: this.route });
-  }
-
-  onCreateContact() {
-    this.contactService.addContact(
-      new Contact(
-        '',
-        this.contactName,
-        this.contactEmail,
-        this.contactPhone,
-        this.contactImageUrl,
-        []
-      )
-    );
-    this.contactName = '';
-    this.contactEmail = '';
-    this.contactPhone = '';
-    this.contactImageUrl = '../../assets/images/default.png';
-  }
-
   canDeactivate(): Observable<boolean> | Promise<boolean> | boolean {
+    const contactGroup = this.contact.group ?? [];
     if (
-      (this.contactName !== this.contact.name ||
-        this.contactEmail !== this.contact.email ||
-        this.contactPhone !== this.contact.phone ||
-        this.contactImageUrl !== this.contact.imageUrl) &&
+      (this.form.value.name !== this.contact.name ||
+        this.form.value.email !== this.contact.email ||
+        this.form.value.phone !== this.contact.phone ||
+        this.form.value.imageUrl !== this.contact.imageUrl ||
+        JSON.stringify(this.groupContacts) !== JSON.stringify(contactGroup)) &&
       !this.changesSaved
     ) {
       return confirm('Do you want to discard your changes?');
