@@ -2,7 +2,7 @@
   <div class="pull-left">
     <h3>{{ contact.name }}</h3>
   </div>
-  <div *ngIf="contact.imageUrl.trim() !== ''" class="pull-right">
+  <div *ngIf="contact.imageUrl ? contact.imageUrl.trim() : '' !== ''" class="pull-right">
     <img src="{{ contact.imageUrl }}" alt="{{ contact.name }}" class="img-responsive" style="max-height: 60px;">
   </div>
 </a>

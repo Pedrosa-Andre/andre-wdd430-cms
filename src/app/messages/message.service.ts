@@ -1,20 +1,54 @@
 import { Injectable } from '@angular/core';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+
 import { Message } from './message.model';
-import { MOCKMESSAGES } from './MOCKMESSAGES';
 import { Subject } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
 })
 export class MessageService {
-  messages: Message[];
+  messages: Message[] = [];
   messageChangedEvent = new Subject<Message[]>();
+  maxMessageId: number;
 
-  constructor() {
-    this.messages = MOCKMESSAGES;
+  constructor(private http: HttpClient) {
+    this.getMessages();
+  }
+
+  getMaxId(): number {
+    let maxId = 0;
+
+    for (let message of this.messages) {
+      let currentId = +message.id;
+      if (currentId > maxId) {
+        maxId = currentId;
+      }
+    }
+
+    return maxId;
   }
 
   getMessages(): Message[] {
+    this.http
+      .get('https://cms-andre-default-rtdb.firebaseio.com/messages.json')
+      .subscribe(
+        // success method
+        (messages: Message[]) => {
+          this.messages = messages;
+          this.maxMessageId = this.getMaxId();
+          this.messages.sort((a, b) => {
+            if (a.id < b.id) return -1;
+            if (a.id > b.id) return 1;
+            return 0;
+          });
+          this.messageChangedEvent.next(this.messages.slice());
+        },
+        // error method
+        (error: any) => {
+          console.log(error);
+        }
+      );
     return this.messages.slice();
   }
 
@@ -27,8 +61,41 @@ export class MessageService {
     return null;
   }
 
+  storeMessages(messages: Message[]) {
+    const messagesJSON = JSON.stringify(messages);
+
+    this.http
+      .put(
+        'https://cms-andre-default-rtdb.firebaseio.com/messages.json',
+        messagesJSON,
+        {
+          headers: new HttpHeaders({
+            'Content-Type': 'application/json',
+          }),
+        }
+      )
+      .subscribe(
+        // success method
+        (responseData) => {
+          this.messageChangedEvent.next(
+            JSON.parse(JSON.stringify(responseData))
+          );
+        },
+        // error method
+        (error: any) => {
+          console.log(error);
+        }
+      );
+  }
+
   addMessage(message: Message) {
+    if (!message) {
+      return;
+    }
+
+    this.maxMessageId++;
+    message.id = `${this.maxMessageId}`;
     this.messages.push(message);
-    this.messageChangedEvent.next(this.messages.slice());
+    this.storeMessages(this.messages.slice());
   }
 }
