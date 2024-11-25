@@ -14,14 +14,14 @@ import { MessageService } from '../message.service';
 export class MessageEditComponent {
   @ViewChild('subject') subjectRef: ElementRef;
   @ViewChild('msgText') msgTextRef: ElementRef;
-  currentSender = '19'; // The ID for my contact, which I added to MOCKCONTATCS.ts
+  currentSender = '19'; // The ID for my contact.
 
   constructor(private messageService: MessageService) {}
 
   onSendMessage() {
     const subject = this.subjectRef.nativeElement.value;
     const msgText = this.msgTextRef.nativeElement.value;
-    const message = new Message('0001', subject, msgText, this.currentSender);
+    const message = new Message('', subject, msgText, this.currentSender);
     this.messageService.addMessage(message);
   }
 
