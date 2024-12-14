@@ -58,7 +58,9 @@ export class DocumentEditComponent implements OnInit, CanComponentDeactivate {
       this.documentService.addDocument(newDocument);
     }
     this.changesSaved = true;
-    this.router.navigate(['../'], { relativeTo: this.route });
+    // TODO: Find a fix for the component not updating right after edit.
+    // this.router.navigate(['../'], { relativeTo: this.route });
+    this.router.navigate(['/documents'], { relativeTo: this.route.root }); // Temporary workaround
   }
 
   onCancel() {

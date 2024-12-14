@@ -5,6 +5,7 @@ var http = require("http");
 var bodyParser = require("body-parser");
 var cookieParser = require("cookie-parser");
 var logger = require("morgan");
+const mongodb = require('./db/connect');
 
 // import the routing file to handle the default (index) route
 var index = require("./server/routes/app");
@@ -68,4 +69,13 @@ const server = http.createServer(app);
 // Tell the server to start listening on the provided port
 server.listen(port, function () {
   console.log("API running on localhost: " + port);
+});
+
+// establish a connection to the mongo database
+mongodb.initDb((err) => {
+  if (err) {
+    console.log(err);
+  } else {
+    console.log(`Connected to DB and listening on ${server.address().port}`);
+  }
 });

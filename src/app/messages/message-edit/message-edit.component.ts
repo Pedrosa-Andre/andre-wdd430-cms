@@ -14,7 +14,7 @@ import { MessageService } from '../message.service';
 export class MessageEditComponent {
   @ViewChild('subject') subjectRef: ElementRef;
   @ViewChild('msgText') msgTextRef: ElementRef;
-  currentSender = '19'; // The ID for my contact.
+  currentSender = '101'; // The ID for my contact.
 
   constructor(private messageService: MessageService) {}
 

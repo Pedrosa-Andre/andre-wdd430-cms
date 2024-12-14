@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 
 import { Document } from './document.model';
 import { Subject } from 'rxjs';
@@ -31,25 +31,21 @@ export class DocumentService {
   }
 
   getDocuments(): Document[] {
-    this.http
-      .get('https://cms-andre-default-rtdb.firebaseio.com/documents.json')
-      .subscribe(
-        // success method
-        (documents: Document[]) => {
-          this.documents = documents;
-          this.maxDocumentId = this.getMaxId();
-          this.documents.sort((a, b) => {
-            if (a.id < b.id) return -1;
-            if (a.id > b.id) return 1;
-            return 0;
-          });
-          this.documentListChangedEvent.next(this.documents.slice());
-        },
-        // error method
-        (error: any) => {
-          console.log(error);
-        }
-      );
+    this.http.get('http://localhost:3000/documents').subscribe(
+      (responseData: { resMessage: string; documents?: Document[]; error?: string }) => {
+        this.documents = responseData.documents;
+        this.maxDocumentId = this.getMaxId();
+        this.documents.sort((a, b) => {
+          if (+a.id < +b.id) return -1;
+          if (+a.id > +b.id) return 1;
+          return 0;
+        });
+        this.documentListChangedEvent.next(this.documents.slice());
+      },
+      (error: any) => {
+        console.log(error);
+      }
+    );
     return this.documents.slice();
   }
 
@@ -62,44 +58,26 @@ export class DocumentService {
     return null;
   }
 
-  storeDocuments(documents: Document[]) {
-    const documentsJSON = JSON.stringify(documents);
-
-    this.http
-      .put(
-        'https://cms-andre-default-rtdb.firebaseio.com/documents.json',
-        documentsJSON,
-        {
-          headers: new HttpHeaders({
-            'Content-Type': 'application/json',
-          }),
-        }
-      )
-      .subscribe(
-        // success method
-        (responseData) => {
-          this.documentListChangedEvent.next(
-            JSON.parse(JSON.stringify(responseData))
-          );
-        },
-        // error method
-        (error: any) => {
-          console.log(error);
-        }
-      );
-  }
-
   deleteDocument(document: Document) {
     if (!document) {
       return;
     }
-    const pos = this.documents.indexOf(document);
-    if (pos < 0) {
-      return;
-    }
 
-    this.documents.splice(pos, 1);
-    this.storeDocuments(this.documents.slice());
+    this.http
+      .delete(`http://localhost:3000/documents/${document.id}`)
+      .subscribe(
+        () => {
+          // Remove from local cache only on success
+          this.documents = this.documents.filter(
+            (doc) => doc.id !== document.id
+          );
+          this.documentListChangedEvent.next(this.documents.slice());
+          console.log('Document deleted successfully');
+        },
+        (error: any) => {
+          console.error('Error deleting document', error);
+        }
+      );
   }
 
   addDocument(newDocument: Document) {
@@ -109,23 +87,45 @@ export class DocumentService {
 
     this.maxDocumentId++;
     newDocument.id = `${this.maxDocumentId}`;
-    this.documents.push(newDocument);
-    const documentsListClone = this.documents.slice();
-    this.storeDocuments(documentsListClone);
+
+    this.http
+      .post('http://localhost:3000/documents', newDocument)
+      .subscribe(
+        (responseData: { resMessage: string; document?: Document; error?: string }) => {
+          this.documents.push(responseData.document);
+          this.documentListChangedEvent.next(this.documents.slice());
+        },
+        (error: any) => {
+          console.error('Error adding document', error);
+        }
+      );
   }
 
   updateDocument(originalDocument: Document, newDocument: Document) {
     if (!originalDocument || !newDocument) {
       return;
     }
-    const pos = this.documents.indexOf(originalDocument);
-    if (pos < 0) {
-      return;
-    }
 
     newDocument.id = originalDocument.id;
-    this.documents[pos] = newDocument;
-    const documentsListClone = this.documents.slice();
-    this.storeDocuments(documentsListClone);
+
+    this.http
+      .put(
+        `http://localhost:3000/documents/${originalDocument.id}`,
+        newDocument
+      )
+      .subscribe(
+        (responseData: { resMessage: string; document?: Document; error?: string }) => {
+          const pos = this.documents.findIndex(
+            (doc) => doc.id === originalDocument.id
+          );
+          if (pos >= 0) {
+            this.documents[pos] = responseData.document;
+            this.documentListChangedEvent.next(this.documents.slice());
+          }
+        },
+        (error: any) => {
+          console.error('Error updating document', error);
+        }
+      );
   }
 }

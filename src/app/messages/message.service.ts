@@ -30,25 +30,21 @@ export class MessageService {
   }
 
   getMessages(): Message[] {
-    this.http
-      .get('https://cms-andre-default-rtdb.firebaseio.com/messages.json')
-      .subscribe(
-        // success method
-        (messages: Message[]) => {
-          this.messages = messages;
-          this.maxMessageId = this.getMaxId();
-          this.messages.sort((a, b) => {
-            if (a.id < b.id) return -1;
-            if (a.id > b.id) return 1;
-            return 0;
-          });
-          this.messageChangedEvent.next(this.messages.slice());
-        },
-        // error method
-        (error: any) => {
-          console.log(error);
-        }
-      );
+    this.http.get('http://localhost:3000/messages').subscribe(
+      (responseData: { message: string; messages?: Message[]; error?: string }) => {
+        this.messages = responseData.messages;
+        this.maxMessageId = this.getMaxId();
+        this.messages.sort((a, b) => {
+          if (+a.id < +b.id) return -1;
+          if (+a.id > +b.id) return 1;
+          return 0;
+        });
+        this.messageChangedEvent.next(this.messages.slice());
+      },
+      (error: any) => {
+        console.log(error);
+      }
+    );
     return this.messages.slice();
   }
 
@@ -61,41 +57,24 @@ export class MessageService {
     return null;
   }
 
-  storeMessages(messages: Message[]) {
-    const messagesJSON = JSON.stringify(messages);
-
-    this.http
-      .put(
-        'https://cms-andre-default-rtdb.firebaseio.com/messages.json',
-        messagesJSON,
-        {
-          headers: new HttpHeaders({
-            'Content-Type': 'application/json',
-          }),
-        }
-      )
-      .subscribe(
-        // success method
-        (responseData) => {
-          this.messageChangedEvent.next(
-            JSON.parse(JSON.stringify(responseData))
-          );
-        },
-        // error method
-        (error: any) => {
-          console.log(error);
-        }
-      );
-  }
-
-  addMessage(message: Message) {
-    if (!message) {
+  addMessage(newMessage: Message) {
+    if (!newMessage) {
       return;
     }
 
     this.maxMessageId++;
-    message.id = `${this.maxMessageId}`;
-    this.messages.push(message);
-    this.storeMessages(this.messages.slice());
+    newMessage.id = `${this.maxMessageId}`;
+
+    this.http
+      .post('http://localhost:3000/messages', newMessage)
+      .subscribe(
+        (responseData: { data: string; message?: Message; error?: string }) => {
+          this.messages.push(responseData.message);
+          this.messageChangedEvent.next(this.messages.slice());
+        },
+        (error: any) => {
+          console.error('Error adding message', error);
+        }
+      );
   }
 }
